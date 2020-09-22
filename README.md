@@ -12,14 +12,13 @@ project, stored under the `.env` directory. To create the virtualenv it assumes 
 for Windows) executable in your path with access to the `venv` package. If for any reason the automatic creation of the
 virtualenv fails, you can create the virtualenv manually.
 
-To manually create a virtualenv on MacOS and Linux:
+At first, you need run a cloud9 instance and git clone this repo:
 
 ```
-$ python3 -m venv .env
+$ git clone https://github.com/hy714335634/aws-cdk-workshop-gcr.git
 ```
 
-After the init process completes and the virtualenv is created, you can use the following
-step to activate your virtualenv.
+You can use the followin step to activate your virtualenv.
 
 ```
 $ source .env/bin/activate

@@ -1,5 +1,0 @@
-workshop/workshop.egg-info/PKG-INFO
-workshop/workshop.egg-info/SOURCES.txt
-workshop/workshop.egg-info/dependency_links.txt
-workshop/workshop.egg-info/requires.txt
-workshop/workshop.egg-info/top_level.txt

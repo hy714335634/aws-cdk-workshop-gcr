@@ -1,0 +1,836 @@
+Metadata-Version: 2.1
+Name: aws-cdk.aws-stepfunctions-tasks
+Version: 1.42.0
+Summary: Task integrations for AWS StepFunctions
+Home-page: https://github.com/aws/aws-cdk
+Author: Amazon Web Services
+License: Apache-2.0
+Project-URL: Source, https://github.com/aws/aws-cdk.git
+Platform: UNKNOWN
+Classifier: Intended Audience :: Developers
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: JavaScript
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Typing :: Typed
+Classifier: Development Status :: 4 - Beta
+Classifier: License :: OSI Approved
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+Requires-Dist: jsii (<2.0.0,>=1.5.0)
+Requires-Dist: publication (>=0.0.3)
+Requires-Dist: aws-cdk.assets (==1.42.0)
+Requires-Dist: aws-cdk.aws-batch (==1.42.0)
+Requires-Dist: aws-cdk.aws-cloudwatch (==1.42.0)
+Requires-Dist: aws-cdk.aws-ec2 (==1.42.0)
+Requires-Dist: aws-cdk.aws-ecr (==1.42.0)
+Requires-Dist: aws-cdk.aws-ecr-assets (==1.42.0)
+Requires-Dist: aws-cdk.aws-ecs (==1.42.0)
+Requires-Dist: aws-cdk.aws-glue (==1.42.0)
+Requires-Dist: aws-cdk.aws-iam (==1.42.0)
+Requires-Dist: aws-cdk.aws-kms (==1.42.0)
+Requires-Dist: aws-cdk.aws-lambda (==1.42.0)
+Requires-Dist: aws-cdk.aws-s3 (==1.42.0)
+Requires-Dist: aws-cdk.aws-sns (==1.42.0)
+Requires-Dist: aws-cdk.aws-sqs (==1.42.0)
+Requires-Dist: aws-cdk.aws-stepfunctions (==1.42.0)
+Requires-Dist: aws-cdk.core (==1.42.0)
+Requires-Dist: constructs (<4.0.0,>=3.0.2)
+
+# Tasks for AWS Step Functions
+
+<!--BEGIN STABILITY BANNER-->---
+
+
+![cdk-constructs: Experimental](https://img.shields.io/badge/cdk--constructs-experimental-important.svg?style=for-the-badge)
+
+> The APIs of higher level constructs in this module are experimental and under active development. They are subject to non-backward compatible changes or removal in any future version. These are not subject to the [Semantic Versioning](https://semver.org/) model and breaking changes will be announced in the release notes. This means that while you may use them, you may need to update your source code when upgrading to a newer version of this package.
+
+---
+<!--END STABILITY BANNER-->
+
+[AWS Step Functions](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) is a web service that enables you to coordinate the
+components of distributed applications and microservices using visual workflows.
+You build applications from individual components that each perform a discrete
+function, or task, allowing you to scale and change applications quickly.
+
+A [Task](https://docs.aws.amazon.com/step-functions/latest/dg/amazon-states-language-task-state.html) state represents a single unit of work performed by a state machine.
+All work in your state machine is performed by tasks.
+
+This module is part of the [AWS Cloud Development Kit](https://github.com/aws/aws-cdk) project.
+
+## Table Of Contents
+
+* [Task](#task)
+* [Paths](#paths)
+
+  * [InputPath](#inputpath)
+  * [OutputPath](#outputpath)
+  * [ResultPath](#resultpath)
+* [Parameters](#task-parameters-from-the-state-json)
+* [Evaluate Expression](#evaluate-expression)
+* [Batch](#batch)
+
+  * [SubmitJob](#submitjob)
+* [DynamoDB](#dynamodb)
+
+  * [GetItem](#getitem)
+  * [PutItem](#putitem)
+  * [DeleteItem](#deleteitem)
+  * [UpdateItem](#updateitem)
+* [ECS](#ecs)
+
+  * [RunTask](#runtask)
+* [EMR](#emr)
+
+  * [Create Cluster](#create-cluster)
+  * [Termination Protection](#termination-protection)
+  * [Terminate Cluster](#terminate-cluster)
+  * [Add Step](#add-step)
+  * [Cancel Step](#cancel-step)
+  * [Modify Instance Fleet](#modify-instance-fleet)
+  * [Modify Instance Group](#modify-instance-group)
+* [Glue](#glue)
+* [Lambda](#lambda)
+* [SageMaker](#sagemaker)
+
+  * [Create Training Job](#create-training-job)
+  * [Create Transform Job](#create-transform-job)
+* [SNS](#sns)
+* [Step Functions](#step-functions)
+* [SQS](#sqs)
+
+## Task
+
+A Task state represents a single unit of work performed by a state machine. In the
+CDK, the exact work to be In the CDK, the exact work to be done is determined by
+a class that implements `IStepFunctionsTask`.
+
+AWS Step Functions [integrates](https://docs.aws.amazon.com/step-functions/latest/dg/concepts-service-integrations.html) with some AWS services so that you can call API
+actions, and coordinate executions directly from the Amazon States Language in
+Step Functions. You can directly call and pass parameters to the APIs of those
+services.
+
+## Paths
+
+In the Amazon States Language, a [path](https://docs.aws.amazon.com/step-functions/latest/dg/amazon-states-language-paths.html) is a string beginning with `$` that you
+can use to identify components within JSON text.
+
+Learn more about input and output processing in Step Functions [here](https://docs.aws.amazon.com/step-functions/latest/dg/concepts-input-output-filtering.html)
+
+### InputPath
+
+Both `InputPath` and `Parameters` fields provide a way to manipulate JSON as it
+moves through your workflow. AWS Step Functions applies the `InputPath` field first,
+and then the `Parameters` field. You can first filter your raw input to a selection
+you want using InputPath, and then apply Parameters to manipulate that input
+further, or add new values. If you don't specify an `InputPath`, a default value
+of `$` will be used.
+
+The following example provides the field named `input` as the input to the `Task`
+state that runs a Lambda function.
+
+```python
+# Example automatically generated without compilation. See https://github.com/aws/jsii/issues/826
+submit_job = sfn.Task(stack, "Invoke Handler",
+    task=tasks.RunLambdaTask(submit_job_lambda),
+    input_path="$.input"
+)
+```
+
+### OutputPath
+
+Tasks also allow you to select a portion of the state output to pass to the next
+state. This enables you to filter out unwanted information, and pass only the
+portion of the JSON that you care about. If you don't specify an `OutputPath`,
+a default value of `$` will be used. This passes the entire JSON node to the next
+state.
+
+The [response](https://docs.aws.amazon.com/lambda/latest/dg/API_Invoke.html#API_Invoke_ResponseSyntax) from a Lambda function includes the response from the function
+as well as other metadata.
+
+The following example assigns the output from the Task to a field named `result`
+
+```python
+# Example automatically generated without compilation. See https://github.com/aws/jsii/issues/826
+submit_job = sfn.Task(stack, "Invoke Handler",
+    task=tasks.RunLambdaTask(submit_job_lambda),
+    output_path="$.Payload.result"
+)
+```
+
+### ResultPath
+
+The output of a state can be a copy of its input, the result it produces (for
+example, output from a Task state’s Lambda function), or a combination of its
+input and result. Use [`ResultPath`](https://docs.aws.amazon.com/step-functions/latest/dg/input-output-resultpath.html) to control which combination of these is
+passed to the state output. If you don't specify an `ResultPath`, a default
+value of `$` will be used.
+
+The following example adds the item from calling DynamoDB's `getItem` API to the state
+input and passes it to the next state.
+
+```python
+# Example automatically generated without compilation. See https://github.com/aws/jsii/issues/826
+sfn.Task(self, "PutItem",
+    task=tasks.CallDynamoDB.get_item(
+        item={
+            "MessageId": tasks.DynamoAttributeValue().with_s("12345")
+        },
+        table_name="my-table"
+    ),
+    result_path="$.Item"
+)
+```
+
+⚠️ The `OutputPath` is computed after applying `ResultPath`. All service integrations
+return metadata as part of their response. When using `ResultPath`, it's not possible to
+merge a subset of the task output to the input.
+
+## Task parameters from the state JSON
+
+Most tasks take parameters. Parameter values can either be static, supplied directly
+in the workflow definition (by specifying their values), or a value available at runtime
+in the state machine's execution (either as its input or an output of a prior state).
+Parameter values available at runtime can be specified via the `Data` class,
+using methods such as `Data.stringAt()`.
+
+The following example provides the field named `input` as the input to the Lambda function
+and invokes it asynchronously.
+
+```python
+# Example automatically generated without compilation. See https://github.com/aws/jsii/issues/826
+submit_job = sfn.Task(stack, "Invoke Handler",
+    task=tasks.RunLambdaTask(submit_job_lambda,
+        payload=sfn.Data.StringAt("$.input"),
+        invocation_type=tasks.InvocationType.EVENT
+    )
+)
+```
+
+Each service integration has its own set of parameters that can be supplied.
+
+## Evaluate Expression
+
+Use the `EvaluateExpression` to perform simple operations referencing state paths. The
+`expression` referenced in the task will be evaluated in a Lambda function
+(`eval()`). This allows you to not have to write Lambda code for simple operations.
+
+Example: convert a wait time from milliseconds to seconds, concat this in a message and wait:
+
+```python
+# Example automatically generated without compilation. See https://github.com/aws/jsii/issues/826
+convert_to_seconds = sfn.Task(self, "Convert to seconds",
+    task=tasks.EvaluateExpression(expression="$.waitMilliseconds / 1000"),
+    result_path="$.waitSeconds"
+)
+
+create_message = sfn.Task(self, "Create message",
+    # Note: this is a string inside a string.
+    task=tasks.EvaluateExpression(
+        expression="`Now waiting ${$.waitSeconds} seconds...`",
+        runtime=lambda.Runtime.NODEJS_10_X
+    ),
+    result_path="$.message"
+)
+
+publish_message = sfn.Task(self, "Publish message",
+    task=tasks.PublishToTopic(topic,
+        message=sfn.TaskInput.from_data_at("$.message")
+    ),
+    result_path="$.sns"
+)
+
+wait = sfn.Wait(self, "Wait",
+    time=sfn.WaitTime.seconds_path("$.waitSeconds")
+)
+
+sfn.StateMachine(self, "StateMachine",
+    definition=convert_to_seconds.next(create_message).next(publish_message).next(wait)
+)
+```
+
+The `EvaluateExpression` supports a `runtime` prop to specify the Lambda
+runtime to use to evaluate the expression. Currently, the only runtime
+supported is `lambda.Runtime.NODEJS_10_X`.
+
+## Batch
+
+Step Functions supports [Batch](https://docs.aws.amazon.com/step-functions/latest/dg/connect-batch.html) through the service integration pattern.
+
+### SubmitJob
+
+The [SubmitJob](https://docs.aws.amazon.com/batch/latest/APIReference/API_SubmitJob.html) API submits an AWS Batch job from a job definition.
+
+```python
+# Example automatically generated without compilation. See https://github.com/aws/jsii/issues/826
+import aws_cdk.aws_batch as batch
+
+batch_queue = batch.JobQueue(self, "JobQueue",
+    compute_environments=[JobQueueComputeEnvironment(
+        order=1,
+        compute_environment=batch.ComputeEnvironment(self, "ComputeEnv",
+            compute_resources=ComputeResources(vpc=vpc)
+        )
+    )
+    ]
+)
+
+batch_job_definition = batch.JobDefinition(self, "JobDefinition",
+    container=JobDefinitionContainer(
+        image=ecs.ContainerImage.from_asset(path.resolve(__dirname, "batchjob-image"))
+    )
+)
+
+task = sfn.Task(self, "Submit Job",
+    task=tasks.RunBatchJob(
+        job_definition=batch_job_definition,
+        job_name="MyJob",
+        job_queue=batch_queue
+    )
+)
+```
+
+## DynamoDB
+
+You can call DynamoDB APIs from a `Task` state.
+Read more about calling DynamoDB APIs [here](https://docs.aws.amazon.com/step-functions/latest/dg/connect-ddb.html)
+
+### GetItem
+
+The [GetItem](https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_GetItem.html) operation returns a set of attributes for the item with the given primary key.
+
+```python
+# Example automatically generated without compilation. See https://github.com/aws/jsii/issues/826
+sfn.Task(self, "Get Item",
+    task=tasks.CallDynamoDB.get_item(
+        partition_key={
+            "name": "messageId",
+            "value": tasks.DynamoAttributeValue().with_s("message-007")
+        },
+        table_name="my-table"
+    )
+)
+```
+
+### PutItem
+
+The [PutItem](https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html) operation creates a new item, or replaces an old item with a new item.
+
+```python
+# Example automatically generated without compilation. See https://github.com/aws/jsii/issues/826
+sfn.Task(self, "PutItem",
+    task=tasks.CallDynamoDB.put_item(
+        item={
+            "MessageId": tasks.DynamoAttributeValue().with_s("message-007"),
+            "Text": tasks.DynamoAttributeValue().with_s(sfn.Data.string_at("$.bar")),
+            "TotalCount": tasks.DynamoAttributeValue().with_n("10")
+        },
+        table_name="my-table"
+    )
+)
+```
+
+### DeleteItem
+
+The [DeleteItem](https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_DeleteItem.html) operation deletes a single item in a table by primary key.
+
+```python
+# Example automatically generated without compilation. See https://github.com/aws/jsii/issues/826
+sfn.Task(self, "DeleteItem",
+    task=tasks.CallDynamoDB.delete_item(
+        partition_key={
+            "name": "MessageId",
+            "value": tasks.DynamoAttributeValue().with_s("message-007")
+        },
+        table_name="my-table"
+    ),
+    result_path="DISCARD"
+)
+```
+
+### UpdateItem
+
+The [UpdateItem](https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateItem.html) operation edits an existing item's attributes, or adds a new item
+to the table if it does not already exist.
+
+```python
+# Example automatically generated without compilation. See https://github.com/aws/jsii/issues/826
+update_item_task = sfn.Task(self, "UpdateItem",
+    task=tasks.CallDynamoDB.update_item(
+        partition_key={
+            "name": "MessageId",
+            "value": tasks.DynamoAttributeValue().with_s("message-007")
+        },
+        table_name="my-table",
+        expression_attribute_values={
+            ":val": tasks.DynamoAttributeValue().with_n(sfn.Data.string_at("$.Item.TotalCount.N")),
+            ":rand": tasks.DynamoAttributeValue().with_n("20")
+        },
+        update_expression="SET TotalCount = :val + :rand"
+    )
+)
+```
+
+## ECS
+
+Step Functions supports [ECS/Fargate](https://docs.aws.amazon.com/step-functions/latest/dg/connect-ecs.html) through the service integration pattern.
+
+### RunTask
+
+[RunTask](https://docs.aws.amazon.com/step-functions/latest/dg/connect-ecs.html) starts a new task using the specified task definition.
+
+```python
+# Example automatically generated without compilation. See https://github.com/aws/jsii/issues/826
+import aws_cdk.aws_ecs as ecs
+
+# See examples in ECS library for initialization of 'cluster' and 'taskDefinition'
+
+ecs.RunEcsFargateTask(
+    cluster=cluster,
+    task_definition=task_definition,
+    container_overrides=[{
+        "container_name": "TheContainer",
+        "environment": [{
+            "name": "CONTAINER_INPUT",
+            "value": Data.string_at("$.valueFromStateData")
+        }
+        ]
+    }
+    ]
+)
+
+fargate_task.connections.allow_to_default_port(rds_cluster, "Read the database")
+
+sfn.Task(self, "CallFargate",
+    task=fargate_task
+)
+```
+
+## EMR
+
+Step Functions supports Amazon EMR through the service integration pattern.
+The service integration APIs correspond to Amazon EMR APIs but differ in the
+parameters that are used.
+
+[Read more](https://docs.aws.amazon.com/step-functions/latest/dg/connect-emr.html) about the differences when using these service integrations.
+
+### Create Cluster
+
+Creates and starts running a cluster (job flow).
+Corresponds to the [`runJobFlow`](https://docs.aws.amazon.com/emr/latest/APIReference/API_RunJobFlow.html) API in EMR.
+
+```python
+# Example automatically generated without compilation. See https://github.com/aws/jsii/issues/826
+cluster_role = iam.Role(stack, "ClusterRole",
+    assumed_by=iam.ServicePrincipal("ec2.amazonaws.com")
+)
+
+service_role = iam.Role(stack, "ServiceRole",
+    assumed_by=iam.ServicePrincipal("elasticmapreduce.amazonaws.com")
+)
+
+auto_scaling_role = iam.Role(stack, "AutoScalingRole",
+    assumed_by=iam.ServicePrincipal("elasticmapreduce.amazonaws.com")
+)
+
+auto_scaling_role.assume_role_policy.add_statements(
+    iam.PolicyStatement(
+        effect=iam.Effect.ALLOW,
+        principals=[
+            iam.ServicePrincipal("application-autoscaling.amazonaws.com")
+        ],
+        actions=["sts:AssumeRole"
+        ]
+    ))
+
+sfn.Task(stack, "Create Cluster",
+    task=tasks.EmrCreateCluster(
+        instances={},
+        cluster_role=cluster_role,
+        name=sfn.TaskInput.from_data_at("$.ClusterName").value,
+        service_role=service_role,
+        auto_scaling_role=auto_scaling_role,
+        integration_pattern=sfn.ServiceIntegrationPattern.FIRE_AND_FORGET
+    )
+)
+```
+
+### Termination Protection
+
+Locks a cluster (job flow) so the EC2 instances in the cluster cannot be
+terminated by user intervention, an API call, or a job-flow error.
+
+Corresponds to the [`setTerminationProtection`](https://docs.aws.amazon.com/step-functions/latest/dg/connect-emr.html) API in EMR.
+
+```python
+# Example automatically generated without compilation. See https://github.com/aws/jsii/issues/826
+sfn.Task(stack, "Task",
+    task=tasks.EmrSetClusterTerminationProtection(
+        cluster_id="ClusterId",
+        termination_protected=False
+    )
+)
+```
+
+### Terminate Cluster
+
+Shuts down a cluster (job flow).
+Corresponds to the [`terminateJobFlows`](https://docs.aws.amazon.com/emr/latest/APIReference/API_TerminateJobFlows.html) API in EMR.
+
+```python
+# Example automatically generated without compilation. See https://github.com/aws/jsii/issues/826
+sfn.Task(stack, "Task",
+    task=tasks.EmrTerminateCluster(
+        cluster_id="ClusterId"
+    )
+)
+```
+
+### Add Step
+
+Adds a new step to a running cluster.
+Corresponds to the [`addJobFlowSteps`](https://docs.aws.amazon.com/emr/latest/APIReference/API_AddJobFlowSteps.html) API in EMR.
+
+```python
+# Example automatically generated without compilation. See https://github.com/aws/jsii/issues/826
+sfn.Task(stack, "Task",
+    task=tasks.EmrAddStep(
+        cluster_id="ClusterId",
+        name="StepName",
+        jar="Jar",
+        action_on_failure=tasks.ActionOnFailure.CONTINUE
+    )
+)
+```
+
+### Cancel Step
+
+Cancels a pending step in a running cluster.
+Corresponds to the [`cancelSteps`](https://docs.aws.amazon.com/emr/latest/APIReference/API_CancelSteps.html) API in EMR.
+
+```python
+# Example automatically generated without compilation. See https://github.com/aws/jsii/issues/826
+sfn.Task(stack, "Task",
+    task=tasks.EmrCancelStep(
+        cluster_id="ClusterId",
+        step_id="StepId"
+    )
+)
+```
+
+### Modify Instance Fleet
+
+Modifies the target On-Demand and target Spot capacities for the instance
+fleet with the specified InstanceFleetName.
+
+Corresponds to the [`modifyInstanceFleet`](https://docs.aws.amazon.com/emr/latest/APIReference/API_ModifyInstanceFleet.html) API in EMR.
+
+```python
+# Example automatically generated without compilation. See https://github.com/aws/jsii/issues/826
+sfn.Task(stack, "Task",
+    task=tasks.EmrModifyInstanceFleetByName(
+        cluster_id="ClusterId",
+        instance_fleet_name="InstanceFleetName",
+        target_on_demand_capacity=2,
+        target_spot_capacity=0
+    )
+)
+```
+
+### Modify Instance Group
+
+Modifies the number of nodes and configuration settings of an instance group.
+
+Corresponds to the [`modifyInstanceGroups`](https://docs.aws.amazon.com/emr/latest/APIReference/API_ModifyInstanceGroups.html) API in EMR.
+
+```python
+# Example automatically generated without compilation. See https://github.com/aws/jsii/issues/826
+sfn.Task(stack, "Task",
+    task=tasks.EmrModifyInstanceGroupByName(
+        cluster_id="ClusterId",
+        instance_group_name=sfn.Data.string_at("$.InstanceGroupName"),
+        instance_group={
+            "instance_count": 1
+        }
+    )
+)
+```
+
+## Glue
+
+Step Functions supports [AWS Glue](https://docs.aws.amazon.com/step-functions/latest/dg/connect-glue.html) through the service integration pattern.
+
+You can call the [`StartJobRun`](https://docs.aws.amazon.com/glue/latest/dg/aws-glue-api-jobs-runs.html#aws-glue-api-jobs-runs-StartJobRun) API from a `Task` state.
+
+```python
+# Example automatically generated without compilation. See https://github.com/aws/jsii/issues/826
+GlueStartJobRun(stack, "Task",
+    job_name="my-glue-job",
+    arguments={
+        "key": "value"
+    },
+    timeout=cdk.Duration.minutes(30),
+    notify_delay_after=cdk.Duration.minutes(5)
+)
+```
+
+## Lambda
+
+[Invoke](https://docs.aws.amazon.com/lambda/latest/dg/API_Invoke.html) a Lambda function.
+
+You can specify the input to your Lambda function through the `payload` attribute.
+By default, Step Functions invokes Lambda function with the state input (JSON path '$')
+as the input.
+
+The following snippet invokes a Lambda Function with the state input as the payload
+by referencing the `$` path.
+
+```python
+# Example automatically generated without compilation. See https://github.com/aws/jsii/issues/826
+import aws_cdk.aws_lambda as lambda
+import aws_cdk.aws_stepfunctions as sfn
+import aws_cdk.aws_stepfunctions_tasks as tasks
+
+my_lambda = lambda.Function(self, "my sample lambda",
+    code=Code.from_inline("exports.handler = async () => {\n    return {\n      statusCode: '200',\n      body: 'hello, world!'\n    };\n  };"),
+    runtime=Runtime.NODEJS_12_X,
+    handler="index.handler"
+)
+
+tasks.LambdaInvoke(self, "Invoke with state input",
+    lambda_function=my_lambda
+)
+```
+
+When a function is invoked, the Lambda service sends  [these response
+elements](https://docs.aws.amazon.com/lambda/latest/dg/API_Invoke.html#API_Invoke_ResponseElements)
+back.
+
+⚠️ The response from the Lambda function is in an attribute called `Payload`
+
+The following snippet invokes a Lambda Function by referencing the `$.Payload` path
+to reference the output of a Lambda executed before it.
+
+```python
+# Example automatically generated without compilation. See https://github.com/aws/jsii/issues/826
+tasks.LambdaInvoke(self, "Invoke with empty object as payload",
+    lambda_function=my_lambda,
+    payload=sfn.TaskInput.from_object()
+)
+
+# use the output of myLambda as input
+tasks.LambdaInvoke(self, "Invoke with payload field in the state input",
+    lambda_function=my_other_lambda,
+    payload=sfn.TaskInput.from_data_at("$.Payload")
+)
+```
+
+The following snippet invokes a Lambda and sets the task output to only include
+the Lambda function response.
+
+```python
+# Example automatically generated without compilation. See https://github.com/aws/jsii/issues/826
+tasks.LambdaInvoke(self, "Invoke and set function response as task output",
+    lambda_function=my_lambda,
+    payload=sfn.TaskInput.from_data_at("$"),
+    output_path="$.Payload"
+)
+```
+
+You can have Step Functions pause a task, and wait for an external process to
+return a task token. Read more about the [callback pattern](https://docs.aws.amazon.com/step-functions/latest/dg/callback-task-sample-sqs.html#call-back-lambda-example)
+
+To use the callback pattern, set the `token` property on the task. Call the Step
+Functions `SendTaskSuccess` or `SendTaskFailure` APIs with the token to
+indicate that the task has completed and the state machine should resume execution.
+
+The following snippet invokes a Lambda with the task token as part of the input
+to the Lambda.
+
+```python
+# Example automatically generated without compilation. See https://github.com/aws/jsii/issues/826
+tasks.LambdaInvoke(stack, "Invoke with callback",
+    lambda_function=my_lambda,
+    integration_pattern=sfn.IntegrationPattern.WAIT_FOR_TASK_TOKEN,
+    payload=sfn.TaskInput.from_object(
+        token=sfn.Context.task_token,
+        input=sfn.Data.string_at("$.someField")
+    )
+)
+```
+
+⚠️ The task will pause until it receives that task token back with a `SendTaskSuccess` or `SendTaskFailure`
+call. Learn more about [Callback with the Task
+Token](https://docs.aws.amazon.com/step-functions/latest/dg/connect-to-resource.html#connect-wait-token).
+
+## SageMaker
+
+Step Functions supports [AWS SageMaker](https://docs.aws.amazon.com/step-functions/latest/dg/connect-sagemaker.html) through the service integration pattern.
+
+### Create Training Job
+
+You can call the [`CreateTrainingJob`](https://docs.aws.amazon.com/sagemaker/latest/dg/API_CreateTrainingJob.html) API from a `Task` state.
+
+```python
+# Example automatically generated without compilation. See https://github.com/aws/jsii/issues/826
+sfn.Task(stack, "TrainSagemaker",
+    task=tasks.SagemakerTrainTask(
+        training_job_name=sfn.Data.string_at("$.JobName"),
+        role=role,
+        algorithm_specification={
+            "algorithm_name": "BlazingText",
+            "training_input_mode": tasks.InputMode.FILE
+        },
+        input_data_config=[{
+            "channel_name": "train",
+            "data_source": {
+                "s3_data_source": {
+                    "s3_data_type": tasks.S3DataType.S3_PREFIX,
+                    "s3_location": tasks.S3Location.from_json_expression("$.S3Bucket")
+                }
+            }
+        }
+        ],
+        output_data_config={
+            "s3_output_location": tasks.S3Location.from_bucket(s3.Bucket.from_bucket_name(stack, "Bucket", "mybucket"), "myoutputpath")
+        },
+        resource_config={
+            "instance_count": 1,
+            "instance_type": ec2.InstanceType.of(ec2.InstanceClass.P3, ec2.InstanceSize.XLARGE2),
+            "volume_size_in_gB": 50
+        },
+        stopping_condition={
+            "max_runtime": cdk.Duration.hours(1)
+        }
+    )
+)
+```
+
+### Create Transform Job
+
+You can call the [`CreateTransformJob`](https://docs.aws.amazon.com/sagemaker/latest/dg/API_CreateTransformJob.html) API from a `Task` state.
+
+```python
+# Example automatically generated without compilation. See https://github.com/aws/jsii/issues/826
+transform_job = tasks.SagemakerTransformTask(transform_job_name, "MyTransformJob", model_name, "MyModelName", role, transform_input, {
+    "transform_data_source": {
+        "s3_data_source": {
+            "s3_uri": "s3://inputbucket/train",
+            "s3_data_type": S3DataType.S3Prefix
+        }
+    }
+}, transform_output, {
+    "s3_output_path": "s3://outputbucket/TransformJobOutputPath"
+}, transform_resources,
+    instance_count=1,
+    instance_type=ec2.InstanceType.of(ec2.InstanceClass.M4, ec2.InstanceSize.XLarge)
+)
+
+task = sfn.Task(self, "Batch Inference",
+    task=transform_job
+)
+```
+
+## SNS
+
+Step Functions supports [Amazon SNS](https://docs.aws.amazon.com/step-functions/latest/dg/connect-sns.html) through the service integration pattern.
+
+You can call the [`Publish`](https://docs.aws.amazon.com/sns/latest/api/API_Publish.html) API from a `Task` state to publish to an SNS topic.
+
+```python
+# Example automatically generated without compilation. See https://github.com/aws/jsii/issues/826
+import aws_cdk.aws_sns as sns
+import aws_cdk.aws_stepfunctions as sfn
+import aws_cdk.aws_stepfunctions_tasks as tasks
+
+# ...
+
+topic = sns.Topic(self, "Topic")
+
+# Use a field from the execution data as message.
+task1 = tasks.SnsPublish(self, "Publish1",
+    topic=topic,
+    integration_pattern=sfn.IntegrationPattern.REQUEST_RESPONSE,
+    message=sfn.TaskInput.from_data_at("$.state.message")
+)
+
+# Combine a field from the execution data with
+# a literal object.
+task2 = tasks.SnsPublish(self, "Publish2",
+    topic=topic,
+    message=sfn.TaskInput.from_object({
+        "field1": "somedata",
+        "field2": sfn.Data.string_at("$.field2")
+    })
+)
+```
+
+## Step Functions
+
+You can manage [AWS Step Functions](https://docs.aws.amazon.com/step-functions/latest/dg/connect-stepfunctions.html) executions.
+
+AWS Step Functions supports it's own [`StartExecution`](https://docs.aws.amazon.com/step-functions/latest/apireference/API_StartExecution.html) API as a service integration.
+
+```python
+# Example automatically generated without compilation. See https://github.com/aws/jsii/issues/826
+# Define a state machine with one Pass state
+child = sfn.StateMachine(stack, "ChildStateMachine",
+    definition=sfn.Chain.start(sfn.Pass(stack, "PassState"))
+)
+
+# Include the state machine in a Task state with callback pattern
+task = sfn.Task(stack, "ChildTask",
+    task=tasks.ExecuteStateMachine(child,
+        integration_pattern=sfn.ServiceIntegrationPattern.WAIT_FOR_TASK_TOKEN,
+        input={
+            "token": sfn.Context.task_token,
+            "foo": "bar"
+        },
+        name="MyExecutionName"
+    )
+)
+
+# Define a second state machine with the Task state above
+sfn.StateMachine(stack, "ParentStateMachine",
+    definition=task
+)
+```
+
+## SQS
+
+Step Functions supports [Amazon SQS](https://docs.aws.amazon.com/step-functions/latest/dg/connect-sqs.html)
+
+You can call the [`SendMessage`](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_SendMessage.html) API from a `Task` state
+to send a message to an SQS queue.
+
+```python
+# Example automatically generated without compilation. See https://github.com/aws/jsii/issues/826
+import aws_cdk.aws_stepfunctions as sfn
+import aws_cdk.aws_stepfunctions_tasks as tasks
+import aws_cdk.aws_sqs as sqs
+
+# ...
+
+queue = sqs.Queue(self, "Queue")
+
+# Use a field from the execution data as message.
+task1 = tasks.SqsSendMessage(self, "Send1",
+    queue=queue,
+    message_body=sfn.TaskInput.from_data_at("$.message")
+)
+
+# Combine a field from the execution data with
+# a literal object.
+task2 = tasks.SqsSendMessage(self, "Send2",
+    queue=queue,
+    message_body=sfn.TaskInput.from_object({
+        "field1": "somedata",
+        "field2": sfn.Data.string_at("$.field2")
+    })
+)
+```
+
+
